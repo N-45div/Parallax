@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import Analyzer from './Analyzer';
+import Benchmark from './Benchmark';
 
 type Arm = { pass: number; amountCorrect: number; safeAction: number; unparsed: number };
 type Row = { model: string; tier: string; trials: number; unguarded: Arm; labelled: Arm; redacted: Arm };
@@ -257,6 +258,10 @@ export default async function Page() {
             <div className="err">Benchmark has not been generated yet — run <code>node scripts/bench.mjs</code>.</div>
           ) : (
             <>
+              <Benchmark rows={bench.rows} trials={bench.trials} />
+
+              <details className="tableview">
+                <summary>The same 108 trials as a table</summary>
               <div className="tablewrap">
                 <table>
                   <thead>
@@ -305,16 +310,31 @@ export default async function Page() {
                   </tbody>
                 </table>
               </div>
+              </details>
 
-              <p className="section-sub" style={{ marginTop: 22 }}>
-                The middle column is a negative result we kept. Quarantining by label — showing the model the
-                concealed text and clearly marking it untrusted — is the obvious design, and it is not safe:
-                smaller models lift the hidden figure straight back out of the quarantine block and act on it.
-                We found that by reading our own failing rows, and then found the same leak through a second
-                door — the findings text itself named the concealed figure, so it was still reaching the model
-                through prose. Both paths now redact, and the benchmark fails the run if the decoy ever
-                appears in the Parallax prompt again. <strong>Telling a weak model that content is untrusted
-                does not stop it being used; not showing it does.</strong>
+              <p className="section-sub" style={{ marginTop: 24 }}>
+                <strong>The two guarded columns tie, and that is not what we expected.</strong> Quoting the
+                concealed text verbatim behind a clear untrusted marker performs exactly as well as withholding
+                it — now. An earlier run of this same benchmark told a different story: the label-quarantine
+                column failed badly, with <code>gpt-4o-mini</code> returning <code>pay</code> on a total of
+                <code>84200.00</code> in every trial, reading the figure straight back out of the block meant
+                to contain it.
+              </p>
+              <p className="section-sub">
+                One change closed that gap, and it was in our code rather than theirs. Our own findings text
+                said <em>&ldquo;Monetary figure 84200.00 appears only in concealed text&rdquo;</em> — so the decoy
+                was also sitting in the prompt as <strong>ordinary, unmarked prose</strong>. Redacting that one
+                sentence moved the same model, on the same file, from <code>pay:84200</code> every trial to{' '}
+                <code>hold:8420</code> every trial. The quarantine block was never the leak; the explanation
+                of it was.
+              </p>
+              <p className="section-sub">
+                <strong>A quarantine only holds if it covers every path into the context — including your own
+                account of what you quarantined.</strong> One unmarked copy of the payload defeats a correctly
+                marked one, and the failure is invisible from the outside: well-formed block, explicit marker,
+                and the number still arrives. The benchmark now asserts the decoy is absent from the Parallax
+                prompt and still present in the label-quarantine prompt, so the control keeps controlling and
+                this cannot regress silently.
               </p>
               <p className="section-sub">
                 The gap between the two totals rows is the honest limit of the approach. Parallax fixes what a

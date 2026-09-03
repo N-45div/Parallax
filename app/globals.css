@@ -298,3 +298,99 @@ tr.total td { border-top: 2px solid var(--line-bright); font-weight: 650; backgr
 /* Missing data reads as absence, never as a score. */
 td.num.nodata { color: var(--ink-4); }
 .answered { font-size: 9.5px; color: var(--ink-4); letter-spacing: 0; }
+
+/* ======================= handoff + domain ======================= */
+.handoff {
+  border-top: 1px solid var(--line); padding: 14px 25px;
+  font-size: 13.5px; line-height: 1.58;
+}
+.handoff.sent    { color: #bde9d1; background: rgba(63, 181, 131, 0.06); }
+.handoff.blocked { color: #f5c3b9; background: rgba(236, 90, 68, 0.06); }
+
+.claim.domain-unregistered { border-left: 3px solid var(--concealed); }
+.claim.domain-lookalike    { border-left: 3px solid var(--warn); }
+.claim.domain-clear        { border-left: 3px solid var(--visible); }
+
+/* ======================= benchmark dot matrix ======================= */
+/* Teal rather than the page's green: the teal/red pair clears the deuteranopia
+   threshold (ΔE 11.4) where green/red sat at the 8.0 floor, and this is the one
+   place in the page where the distinction is carried by a dense field of marks
+   rather than by words next to them. */
+:root {
+  --ok: #2bb39b;
+  --bad: #ec5a44;
+}
+
+.bench { position: relative; }
+.bench-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 20px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.seg { display: inline-flex; border: 1px solid var(--line-bright); border-radius: 8px; overflow: hidden; }
+.seg button {
+  border: 0; border-radius: 0; background: var(--panel); color: var(--ink-3);
+  font-size: 12.5px; padding: 8px 14px;
+}
+.seg button + button { border-left: 1px solid var(--line-bright); }
+.seg button.on { background: var(--panel-2); color: var(--ink); }
+
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--ink-3); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+
+/* Shape is the primary channel; colour reinforces it. A circle, a square and a
+   ring stay distinguishable with no colour vision at all. */
+.dot { display: inline-block; width: 11px; height: 11px; flex: 0 0 11px; }
+.dot.ok   { background: var(--ok);  border-radius: 50%; }
+.dot.bad  { background: var(--bad); border-radius: 2px; }
+.dot.none { background: transparent; border: 1.5px solid var(--ink-4); border-radius: 50%; }
+i.dot:focus-visible { outline: 2px solid var(--structural); outline-offset: 2px; }
+
+.matrix { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow-x: auto; }
+.matrix-head, .matrix-row {
+  display: grid; grid-template-columns: minmax(210px, 1.4fr) repeat(3, minmax(120px, 1fr));
+  align-items: center; min-width: 620px;
+}
+.matrix-head { border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.arm-h {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-4); padding: 10px 14px; text-align: center;
+}
+.arm-h.is-parallax { color: var(--ink-2); }
+
+.matrix-row { border-bottom: 1px solid var(--line); }
+.matrix-row:last-child { border-bottom: 0; }
+.m-name {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-2);
+  padding: 9px 14px; display: flex; flex-direction: column; gap: 2px;
+}
+.m-name em { font-style: normal; font-size: 10px; color: var(--ink-4); }
+
+/* 3px between marks: the spacer that keeps adjacent fills from reading as one. */
+.cellgroup { display: flex; gap: 3px; justify-content: center; padding: 9px 14px; }
+.cellgroup.is-parallax { background: rgba(43, 179, 155, 0.045); }
+
+.matrix-row.total { border-top: 2px solid var(--line-bright); background: var(--panel-2); }
+.matrix-row.total .m-name { font-family: var(--sans); font-size: 12.5px; color: var(--ink); }
+.cellgroup.pct { flex-direction: column; gap: 1px; align-items: center; }
+.cellgroup.pct b { font-family: var(--mono); font-size: 16px; font-weight: 650; }
+.cellgroup.pct em { font-style: normal; font-family: var(--mono); font-size: 10px; color: var(--ink-4); }
+
+.tip {
+  position: fixed; transform: translate(-50%, calc(-100% - 12px)); z-index: 60;
+  background: #05060a; border: 1px solid var(--line-bright); border-radius: 7px;
+  padding: 9px 12px; font-size: 11.5px; line-height: 1.55; color: var(--ink-2);
+  pointer-events: none; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.9); max-width: 320px;
+}
+.tip-t { font-family: var(--mono); color: var(--ink); margin-bottom: 3px; }
+
+.tableview { margin-top: 22px; }
+.tableview summary {
+  cursor: pointer; font-size: 12.5px; color: var(--ink-3);
+  padding: 9px 0; user-select: none;
+}
+.tableview summary:hover { color: var(--ink); }
+.tableview .tablewrap { margin-top: 10px; }
+.section-sub code {
+  font-family: var(--mono); font-size: 12px; background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px;
+}
