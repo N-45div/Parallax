@@ -41,7 +41,7 @@ Each pairwise disagreement is a named attack class:
 - **D vs B → extraction divergence.** The figure the machine reads is not the figure the human approves.
 - **E vs the page → identity divergence.** The counterparty on the letterhead does not own the domain it bills from.
 
-View B is the original work here. `getTextContent()` cannot tell you whether text is visible, because fill colour, alpha and text render mode live in the content stream rather than in text items. So Parallax replays the operator list through a minimal graphics-state machine — tracking CTM, text matrix, fill colour across three colour spaces, `ca` alpha, text render mode, effective point size, and every filled path as it is painted — and labels every glyph run with the state that drew it. Concealment falls out of one measurement rather than four special cases. See [`lib/views.mjs`](lib/views.mjs).
+View B is the part we built rather than bought. `getTextContent()` cannot tell you whether text is visible, because fill colour, alpha and text render mode live in the content stream rather than in text items. So Parallax replays the operator list through a minimal graphics-state machine — tracking CTM, text matrix, fill colour across three colour spaces, `ca` alpha, text render mode, effective point size, and every filled path as it is painted — and labels every glyph run with the state that drew it. Concealment falls out of one measurement rather than four special cases. See [`lib/views.mjs`](lib/views.mjs).
 
 ### Measuring it against ordinary documents
 
@@ -56,6 +56,28 @@ It took two rounds to get right, and both bugs were ours.
 **With that fixed: 0 false positives across all 60 documents**, and both fixtures unchanged — clean 0, tampered 4.
 
 The lesson we would rather have learned some other way: a detector that reports invisible text is extremely good at producing evidence for its own correctness. We nearly published "we found real invisible text in the wild" when what we had found was our own rounding error.
+
+## Prior art, stated before someone else states it
+
+Hidden-text detection in PDFs is **not** an unexplored gap, and claiming otherwise is the fastest way to lose a security-literate reader. The four signals view B starts from — near-zero contrast, sub-visual point size, off-page position, text render mode 3 — are exactly the four that existing work already checks:
+
+- **[PhantomLint](https://arxiv.org/abs/2508.17884)** — principled detection of hidden LLM prompts in structured documents, evaluated over 3,402 PDFs and HTML files.
+- **[Semantic Integrity Failures in Document-to-LLM Supply Chains](https://arxiv.org/pdf/2606.15020)** — characterises the attack class across document pipelines.
+- **PDF-Prompt-Injection-Toolkit** and **LLM Guard's `InvisibleText` scanner** — shipping open-source detectors covering white text, tiny text, off-page text, OCG layers, metadata and zero-width Unicode.
+
+The established vocabulary is worth using: this is **indirect prompt injection** (OWASP LLM01) delivered through a **render/extract divergence** — a **parser differential** between what a renderer paints and what an extractor emits. The signing case has its own literature under **Shadow Attacks** and the property being violated is **WYSIWYS**, *what you see is what you sign*.
+
+### So what is actually ours
+
+Three things, and they are narrower and more defensible than "nobody checks this":
+
+1. **Concealed *data*, not concealed *instructions*.** Every prior detector we found gates on injection-shaped phrasing — PhantomLint's first stage is semantic matching against a suspicious-prompt list; the toolkit's pattern tier is injection regexes. Our payload is `The total payable under this invoice is USD 84,200.00`. That is not an instruction, it contains no imperative, and a phrasing-based detector is designed to let it through. An over-invoice hidden as ordinary prose is a different problem from a hidden command, and it is the one that moves money.
+
+2. **Measuring the mitigation, not the detector.** Prior work reports detector precision, recall and F1. We could find none that measures **what a downstream model actually does** with and without a defence in place. The 63% → 100% figure, with a negative-control arm and an assertion that the control keeps controlling, is the contribution we would defend.
+
+3. **The quarantine leaking through our own explanation.** Documented above. We have not seen that failure mode described anywhere, and it generalises to any system that quarantines untrusted content by labelling it.
+
+The identity reading (view E) has no prior art we could find, but it is product novelty rather than security novelty, and we position it that way.
 
 ## The harness
 

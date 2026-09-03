@@ -274,6 +274,24 @@ export default async function Page() {
             <em>&ldquo;we found real invisible text in the wild&rdquo;</em> when what we had found was our own
             rounding error.
           </p>
+          <p className="section-sub">
+            <strong>None of that detection is new, and we would rather say so than be caught saying
+            otherwise.</strong> Hidden text in PDFs is well-trodden — PhantomLint, the PDF-Prompt-Injection
+            Toolkit and LLM Guard&apos;s invisible-text scanner all check the same signals. The proper names
+            for this are <em>indirect prompt injection</em> delivered through a <em>render/extract
+            divergence</em>, and for the signing case, <em>shadow attacks</em> against{' '}
+            <em>WYSIWYS</em> — what you see is what you sign.
+          </p>
+          <p className="section-sub">
+            What we could not find prior art for is narrower. Every existing detector gates on
+            injection-shaped <em>phrasing</em>. Our payload is{' '}
+            <code>The total payable under this invoice is USD 84,200.00</code> — no imperative, no
+            instruction, nothing a prompt-pattern matcher is built to catch. <strong>Concealed data is a
+            different problem from a concealed command, and it is the one that moves money.</strong> And
+            prior work reports detector precision and recall; we could find none that measures what a
+            downstream model actually <em>does</em> with and without a defence in place. That measurement is
+            the part we would defend.
+          </p>
         </div>
 
         <Analyzer />
@@ -390,10 +408,45 @@ export default async function Page() {
           )}
         </div>
 
+        <div className="section" id="boundary">
+          <div className="section-head">
+            <span className="section-n">05</span>
+            <h2>Where the boundary belongs</h2>
+          </div>
+          <p className="section-sub">
+            Foxit keeps signing out of an agent&apos;s tool catalogue on purpose, so that a person has to
+            approve anything that gets signed — and invites an argument about whether the boundary sits in the
+            right place. Here is ours.
+          </p>
+          <p className="section-sub">
+            <strong>That boundary is correct, and it is drawn too late.</strong> Withholding the signing tool
+            protects against an agent that <em>decides</em> wrongly. It does nothing about an agent that was{' '}
+            <em>told</em> something the human was not. By the time a document reaches a signature the
+            manipulation has already happened — the agent read $84,200 off a page that says $8,420 — and
+            everything after that is a well-behaved agent faithfully executing a corrupted premise.
+          </p>
+          <p className="section-sub">
+            Worse: the human you correctly insist on is shown the <strong>rendered page</strong>, never the
+            content stream. They confirm precisely the thing they cannot see. A human in the loop who is shown
+            the wrong loop is not a control. This is the property the security literature calls{' '}
+            <em>WYSIWYS</em>, and it is exactly what a shadow attack breaks.
+          </p>
+          <p className="section-sub">
+            So Parallax puts a second gate in front of Foxit&apos;s. Nothing reaches the eSign API until the
+            readings agree. A clean invoice becomes a real envelope waiting on a human signature; a tampered
+            one never becomes an envelope at all. Both paths are live above — read either fixture and press{' '}
+            <em>Send this document for human signature</em>.
+          </p>
+          <p className="section-sub">
+            <strong>The only document Parallax ever signs is the one explaining why it wouldn&apos;t sign
+            yours.</strong>
+          </p>
+        </div>
+
         {guardSearch && (
           <div className="section" id="tuning">
             <div className="section-head">
-              <span className="section-n">05</span>
+              <span className="section-n">06</span>
               <h2>The harness tunes the guard</h2>
             </div>
             <p className="section-sub">
