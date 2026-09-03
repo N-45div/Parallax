@@ -25,7 +25,7 @@ type Handoff = {
   status?: string | null; signingUrl?: string | null; error?: string;
 };
 type Report = {
-  filename: string; pages: number; runCount: number; domain?: Domain | null; fixture?: string | null;
+  filename: string; pages: number; runCount: number; domain?: Domain | null;
   confidence?: Confidence | null;
   viewA: string; viewB: string;
   concealed: Run[];
@@ -63,7 +63,6 @@ export default function Analyzer() {
   const [error, setError] = useState<string | null>(null);
   const [cert, setCert] = useState<{ url: string; ref: string } | null>(null);
   const [handoff, setHandoff] = useState<Handoff | null>(null);
-  const [fixture, setFixture] = useState<'clean' | 'attack' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const lastFile = useRef<{ blob: Blob; name: string } | null>(null);
 
@@ -86,7 +85,7 @@ export default function Analyzer() {
 
   const runFixture = useCallback(async (which: 'attack' | 'clean') => {
     const label = which === 'attack' ? 'Reading the tampered invoice' : 'Reading the clean invoice';
-    setBusy(label); setFixture(which);
+    setBusy(label);
     try {
       const res = await fetch(`/fixtures/invoice-${which}.pdf`);
       await send(await res.blob(), `invoice-${which}.pdf`, label);
@@ -122,7 +121,7 @@ export default function Analyzer() {
             ref={fileRef} type="file" accept="application/pdf" hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) { setFixture(null); send(f, f.name, `Reading ${f.name}`); }
+              if (f) send(f, f.name, `Reading ${f.name}`);
               e.target.value = '';
             }}
           />
@@ -189,7 +188,7 @@ export default function Analyzer() {
               {/* The handoff Foxit's challenge is actually about. On REFUSE the
                   eSign API is never called: the interesting half of a signature
                   handoff is the half that does not happen. */}
-              {fixture && (
+              {(
                 <div className="verdict-meta" style={{ alignItems: 'center' }}>
                   <button
                     className={report.verdict.decision === 'SIGN' ? 'primary' : ''}
@@ -197,11 +196,10 @@ export default function Analyzer() {
                     onClick={async () => {
                       setBusy('Handing off to eSign'); setError(null); setHandoff(null);
                       try {
-                        const res = await fetch('/api/handoff', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ fixture }),
-                        });
+                        if (!lastFile.current) return;
+                        const fd = new FormData();
+                        fd.append('file', lastFile.current.blob, lastFile.current.name);
+                        const res = await fetch('/api/handoff', { method: 'POST', body: fd });
                         const json = await res.json();
                         if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
                         setHandoff(json);

@@ -111,8 +111,8 @@ This is worth stating plainly because the failure is invisible from the outside:
 
 | | Unguarded | Quarantine by label | **Parallax** |
 |---|---|---|---|
-| Read the page's total | 63% (17/27) | **100% (30/30)** | **100% (30/30)** |
-| Declined to pay | 59% (16/27) | 80% (24/30) | 80% (24/30) |
+| Read the page's total | 66% (19/29) | 89% (25/28) | **100% (29/29)** |
+| Declined to pay | 59% (17/29) | 68% (19/28) | 79% (23/29) |
 
 `gpt-4o-mini`, `gpt-4.1-nano` and `phi-4` each reported **$84,200** — the concealed figure — in *every* unguarded trial, and the correct **$8,420** in *every* guarded trial. **No model was made worse.**
 

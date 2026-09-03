@@ -5,7 +5,7 @@ import { analyze } from '@/lib/analyze.mjs';
 import { sendForSignature, esignConfigured } from '@/lib/esign.mjs';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 /**
  * The signature handoff, and the gate in front of it.
@@ -16,8 +16,8 @@ export const maxDuration = 120;
  * content stream, so on a tampered document they confirm precisely the thing
  * they cannot see.
  *
- * So the document is read four ways first. Only a file whose readings agree ever
- * becomes an eSign envelope. On REFUSE this route returns the reasons and calls
+ * So the document is read first. Only a file whose readings agree ever becomes an
+ * eSign envelope. On anything else this route returns the reasons and calls
  * nothing — the interesting half of a handoff is the half that does not happen.
  */
 export async function POST(req: NextRequest) {
@@ -26,20 +26,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Foxit eSign is not configured' }, { status: 503 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const fixture = body?.fixture === 'attack' ? 'attack' : body?.fixture === 'clean' ? 'clean' : null;
-    if (!fixture) {
-      return NextResponse.json({ error: 'fixture must be "clean" or "attack"' }, { status: 400 });
-    }
+    // Any uploaded file, not just the two fixtures. Gating this on documents we
+    // happened to host meant nobody testing their own PDF ever saw the handoff.
+    const form = await req.formData();
+    const file = form.get('file') as File | null;
+    if (!file) return NextResponse.json({ error: 'no file supplied' }, { status: 400 });
 
-    // eSign fetches the file itself, so it has to be reachable by URL. The
-    // origin is taken from the request rather than configured, so this works
-    // identically on a preview deployment and in production.
-    const origin = req.nextUrl.origin;
-    const fileName = `invoice-${fixture}.pdf`;
-    const fileUrl = `${origin}/fixtures/${fileName}`;
-
-    const bytes = Buffer.from(await (await fetch(fileUrl)).arrayBuffer());
+    const bytes = Buffer.from(await file.arrayBuffer());
     const report = await analyze(bytes, process.env, { withEvidence: false });
 
     if (report.verdict.decision !== 'SIGN') {
@@ -49,25 +42,28 @@ export async function POST(req: NextRequest) {
         findings: report.findings,
         concealed: report.views.concealed.length,
         explanation:
-          'Parallax did not call the eSign API. The document carries text no human reviewer can see, so a ' +
-          'person approving this signature would be confirming terms that are not on the page in front of them. ' +
-          'The handoff is refused before an envelope exists.',
+          report.verdict.decision === 'INCONCLUSIVE'
+            ? 'Parallax did not call the eSign API. It could not read this document well enough to have an ' +
+              'opinion, and an envelope nobody can vouch for is worse than no envelope.'
+            : 'Parallax did not call the eSign API. This document carries text no human reviewer can see, so a ' +
+              'person approving the signature would be confirming terms that are not on the page in front of ' +
+              'them. The handoff is refused before an envelope exists.',
       });
     }
 
     const signer = {
-      email: body?.signerEmail || process.env.PARALLAX_SIGNER_EMAIL || 'ndivij2004@gmail.com',
-      first: body?.signerFirst || 'Divij',
-      last: body?.signerLast || 'N',
+      email: (form.get('signerEmail') as string) || process.env.PARALLAX_SIGNER_EMAIL || 'ndivij2004@gmail.com',
+      first: (form.get('signerFirst') as string) || 'Divij',
+      last: (form.get('signerLast') as string) || 'N',
     };
 
     const sent = await sendForSignature({
-      fileUrl,
-      fileName,
+      bytes,
+      fileName: file.name || 'document.pdf',
       signerEmail: signer.email,
       signerFirst: signer.first,
       signerLast: signer.last,
-      subject: `Parallax cleared — ${fileName}`,
+      subject: `Parallax cleared — ${file.name || 'document.pdf'}`,
     }, process.env);
 
     return NextResponse.json({
@@ -78,7 +74,7 @@ export async function POST(req: NextRequest) {
       status: sent.status,
       signingUrl: sent.signingUrl,
       explanation:
-        'All four readings of this file agree, so it was handed to the Foxit eSign API and is now waiting on a ' +
+        'The readings of this file agree, so it was handed to the Foxit eSign API and is now waiting on a ' +
         'human signature. Parallax does not sign it — it only decides whether a person should be asked to.',
     });
   } catch (err: any) {
