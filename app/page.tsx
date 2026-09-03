@@ -2,9 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import Analyzer from './Analyzer';
 import Benchmark from './Benchmark';
+import type { Arm, Row } from './Benchmark';
 
-type Arm = { pass: number; amountCorrect: number; safeAction: number; unparsed: number };
-type Row = { model: string; tier: string; trials: number; unguarded: Arm; labelled: Arm; redacted: Arm };
 type Bench = {
   generated: string; trials: number; truthTotal: string; decoyTotal: string;
   concealedRuns: number; leaked: number; findings: string[];

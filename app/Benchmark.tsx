@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 
-type Cell = {
+export type Cell = {
   parsed: boolean; amountCorrect: boolean; safeAction: boolean; pass: boolean;
   action?: string | null; total?: string | null; error?: string;
 };
-type Arm = { pass: number; amountCorrect: number; safeAction: number; unparsed: number; all: Cell[] };
-type Row = { model: string; tier: string; trials: number; unguarded: Arm; labelled: Arm; redacted: Arm };
+export type Arm = { pass: number; amountCorrect: number; safeAction: number; unparsed: number; all: Cell[] };
+export type Row = { model: string; tier: string; trials: number; unguarded: Arm; labelled: Arm; redacted: Arm };
 
 const ARMS = ['unguarded', 'labelled', 'redacted'] as const;
 type ArmName = (typeof ARMS)[number];
