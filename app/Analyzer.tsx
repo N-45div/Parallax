@@ -232,77 +232,6 @@ export default function Analyzer() {
             </div>
           </div>
 
-          {report.confidence && (
-            <div className="section">
-              <div className="section-head">
-                <h2>What the document engine was most sure about</h2>
-              </div>
-              <p className="section-sub">
-                Nutrient&apos;s understanding pass scores every element it recovers. On a tampered file the
-                ranking inverts the thing you would want: certainty about text and visibility of text turn
-                out to be unrelated properties.
-              </p>
-              <div className="conf">
-                <div className={`conf-row ${report.confidence.top.concealed ? 'bad' : ''}`}>
-                  <span className="conf-n">{report.confidence.top.confidence.toFixed(3)}</span>
-                  <span className="conf-t">
-                    <em>most confident</em>
-                    {report.confidence.top.text}
-                  </span>
-                  <span className="conf-tag">
-                    {report.confidence.top.concealed ? 'no human can see this' : 'on the visible page'}
-                  </span>
-                </div>
-                <div className={`conf-row ${report.confidence.bottom.concealed ? 'bad' : ''}`}>
-                  <span className="conf-n">{report.confidence.bottom.confidence.toFixed(3)}</span>
-                  <span className="conf-t">
-                    <em>least confident</em>
-                    {report.confidence.bottom.text}
-                  </span>
-                  <span className="conf-tag">
-                    {report.confidence.bottom.concealed ? 'no human can see this' : 'on the visible page'}
-                  </span>
-                </div>
-              </div>
-              <p className="hint" style={{ marginTop: 12 }}>
-                {report.confidence.elements} scored elements, confidence {report.confidence.range[0].toFixed(3)}–
-                {report.confidence.range[1].toFixed(3)} · a pipeline that routes on confidence alone routes most
-                confidently on the content it should not be reading
-              </p>
-            </div>
-          )}
-
-          {report.domain && (
-            <div className="section">
-              <div className="section-head">
-                <h2>The fifth reading: who owns the name on the invoice</h2>
-              </div>
-              <p className="section-sub">
-                A redirect has to touch the counterparty&apos;s identity somewhere, and the domain is the field
-                it cannot fake cheaply. Checked against a registrar, so the answer is a fact rather than a ranking.
-              </p>
-              <div className={`claim domain-${report.domain.verdict ?? 'unknown'}`}>
-                <div className="claim-h">
-                  <span className="claim-l">{report.domain.domain}</span>
-                  {report.domain.verdict && <span className="pill">{report.domain.verdict}</span>}
-                  {report.domain.checked && (
-                    <span className="claim-v">{report.domain.checked} domains checked</span>
-                  )}
-                </div>
-                <div className="res" style={{ marginTop: 6 }}>
-                  {report.domain.note ?? report.domain.skipped ?? report.domain.error}
-                </div>
-                {!!report.domain.neighbours?.length && (
-                  <div className="run-meta" style={{ marginTop: 10 }}>
-                    {report.domain.neighbours.slice(0, 8).map((n) => (
-                      <span key={n.domain} className={n.shorterCore ? 'bad' : ''}>{n.domain}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           <div className="section">
             <div className="section-head">
               <h2>The same file, read four ways</h2>
@@ -400,6 +329,77 @@ export default function Analyzer() {
               <ul className="findings">
                 {report.findings.map((f, i) => <li key={i}>{f}</li>)}
               </ul>
+            </div>
+          )}
+
+          {report.confidence && (
+            <div className="section">
+              <div className="section-head">
+                <h2>What the document engine was most sure about</h2>
+              </div>
+              <p className="section-sub">
+                Nutrient&apos;s understanding pass scores every element it recovers. On a tampered file the
+                ranking inverts the thing you would want: certainty about text and visibility of text turn
+                out to be unrelated properties.
+              </p>
+              <div className="conf">
+                <div className={`conf-row ${report.confidence.top.concealed ? 'bad' : ''}`}>
+                  <span className="conf-n">{report.confidence.top.confidence.toFixed(3)}</span>
+                  <span className="conf-t">
+                    <em>most confident</em>
+                    {report.confidence.top.text}
+                  </span>
+                  <span className="conf-tag">
+                    {report.confidence.top.concealed ? 'no human can see this' : 'on the visible page'}
+                  </span>
+                </div>
+                <div className={`conf-row ${report.confidence.bottom.concealed ? 'bad' : ''}`}>
+                  <span className="conf-n">{report.confidence.bottom.confidence.toFixed(3)}</span>
+                  <span className="conf-t">
+                    <em>least confident</em>
+                    {report.confidence.bottom.text}
+                  </span>
+                  <span className="conf-tag">
+                    {report.confidence.bottom.concealed ? 'no human can see this' : 'on the visible page'}
+                  </span>
+                </div>
+              </div>
+              <p className="hint" style={{ marginTop: 12 }}>
+                {report.confidence.elements} scored elements, confidence {report.confidence.range[0].toFixed(3)}–
+                {report.confidence.range[1].toFixed(3)} · a pipeline that routes on confidence alone routes most
+                confidently on the content it should not be reading
+              </p>
+            </div>
+          )}
+
+          {report.domain && (
+            <div className="section">
+              <div className="section-head">
+                <h2>The fifth reading: who owns the name on the invoice</h2>
+              </div>
+              <p className="section-sub">
+                A redirect has to touch the counterparty&apos;s identity somewhere, and the domain is the field
+                it cannot fake cheaply. Checked against a registrar, so the answer is a fact rather than a ranking.
+              </p>
+              <div className={`claim domain-${report.domain.verdict ?? 'unknown'}`}>
+                <div className="claim-h">
+                  <span className="claim-l">{report.domain.domain}</span>
+                  {report.domain.verdict && <span className="pill">{report.domain.verdict}</span>}
+                  {report.domain.checked && (
+                    <span className="claim-v">{report.domain.checked} domains checked</span>
+                  )}
+                </div>
+                <div className="res" style={{ marginTop: 6 }}>
+                  {report.domain.note ?? report.domain.skipped ?? report.domain.error}
+                </div>
+                {!!report.domain.neighbours?.length && (
+                  <div className="run-meta" style={{ marginTop: 10 }}>
+                    {report.domain.neighbours.slice(0, 8).map((n) => (
+                      <span key={n.domain} className={n.shorterCore ? 'bad' : ''}>{n.domain}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
