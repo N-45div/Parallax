@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+
+# Real credentials never; the template always.
+.env
+.env.local
+.env*.local
+!.env.example
+
+.vercel
+*.log
+bench-run.txt
+shot-*.png
