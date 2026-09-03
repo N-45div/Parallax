@@ -57,6 +57,14 @@ It took two rounds to get right, and both bugs were ours.
 
 The lesson we would rather have learned some other way: a detector that reports invisible text is extremely good at producing evidence for its own correctness. We nearly published "we found real invisible text in the wild" when what we had found was our own rounding error.
 
+### How much to trust these numbers
+
+Stated up front, because it is the honest answer: **the direction is solid, the exact percentages are one sample.**
+
+Across repeated runs of the same script the unguarded arm has always been worst, and the Parallax arm has read the total printed on the page correctly in **100% of answered trials every time.** That much has never moved. What does move is the gap between the two *guarded* designs — repeated runs have put them anywhere from a tie to twenty points apart, because a meaningful share of trials return nothing (small models drop out of JSON, shared upstreams rate-limit) and the surviving denominators are small enough that a couple of flips swing a percentage.
+
+Every figure in this repo is printed with its denominator for that reason. And one run had to be thrown away entirely: it silently lost every expensive model to HTTP 402 when the API account ran out of credit, and reported a degraded panel as though it were the full one. Checking the balance is now part of trusting a run.
+
 ## Prior art, stated before someone else states it
 
 Hidden-text detection in PDFs is **not** an unexplored gap, and claiming otherwise is the fastest way to lose a security-literate reader. The four signals view B starts from — near-zero contrast, sub-visual point size, off-page position, text render mode 3 — are exactly the four that existing work already checks:
@@ -109,10 +117,14 @@ This is worth stating plainly because the failure is invisible from the outside:
 
 **Did the model report the total that is actually printed on the page?** This is the question Parallax controls, so it is the headline. Rates are over trials that returned a parseable answer.
 
+<!-- BENCH:start -->
 | | Unguarded | Quarantine by label | **Parallax** |
 |---|---|---|---|
-| Read the page's total | 66% (19/29) | 89% (25/28) | **100% (29/29)** |
-| Declined to pay | 59% (17/29) | 68% (19/28) | 79% (23/29) |
+| Read the page's total | 54% (15/28) | 89% (25/28) | **97% (29/30)** |
+| Declined to pay | 36% (10/28) | 93% (26/28) | **100% (30/30)** |
+
+<sub>12 models × 3 trials × 3 arms = 108 live calls · rates over trials that returned a parseable answer · the Parallax column is the guard the product actually ships, selected by the search below · generated 2026-09-03T15:07:48.084Z</sub>
+<!-- BENCH:end -->
 
 `gpt-4o-mini`, `gpt-4.1-nano` and `phi-4` each reported **$84,200** — the concealed figure — in *every* unguarded trial, and the correct **$8,420** in *every* guarded trial. **No model was made worse.**
 
@@ -124,13 +136,17 @@ Full table, per-model breakdown and caveats in [`RESULTS.md`](RESULTS.md), gener
 
 Everything above measures one guard design, but the design is a choice — and choosing it by taste is how you end up publishing the one that happened to work. `scripts/tune.mjs` evaluates the candidates in [`lib/guards.mjs`](lib/guards.mjs) against the same metric and reports the whole search, losers included. 8 models × 3 trials each.
 
+<!-- GUARDS:start -->
 | Guard design | Declined to pay | Read the page's total |
 |---|---|---|
-| Unguarded | 45% (10/22) | 55% (12/22) |
-| Quarantine by label | 87% (20/23) | 91% (21/23) |
-| Payload withheld | 75% (18/24) | **100%** (24/24) |
-| Evidence first | 88% (21/24) | **100%** (24/24) |
-| **Evidence + standing policy** | **100%** (24/24) | **100%** (24/24) |
+| Unguarded | 35% | 48% |
+| Quarantine by label | 86% | 86% |
+| Payload withheld | 87% | **100%** |
+| **Evidence first** | **100%** | **100%** |
+| Evidence + standing policy | 96% | 91% |
+
+<sub>10 models × 3 trials per design · generated 2026-09-03T15:05:05.152Z</sub>
+<!-- GUARDS:end -->
 
 **Withholding the payload is not strictly better.** It takes reading the correct total to 100%, but it scores *lower on the decision* than quoting the concealed text behind a marker does — hiding the payload also hides how bad it is, and a model that cannot see the threat under-reacts to it. Stating the same evidence as settled, machine-verified fact recovers most of that. Adding the standing payment policy recovers the rest, on every model including `llama-3.2-3b` and `gpt-4.1-nano`, which recommend paying in every unguarded trial.
 

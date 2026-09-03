@@ -62,7 +62,7 @@ L.push('| Arm | What the model receives |');
 L.push('|---|---|');
 L.push('| **Unguarded** | The real output of a commercial extraction API, exactly as a normal pipeline delivers it. |');
 L.push('| **Quarantine by label** | The visible layer, plus the concealed runs quoted verbatim and clearly marked untrusted. |');
-L.push('| **Parallax** | The visible layer, plus a description of each concealed run with the payload withheld. |');
+L.push('| **Parallax** | The visible layer, the concealed runs described with their payload withheld, and the standing payment policy — the guard design the search below selected, which is what the product actually runs. |');
 L.push('');
 
 L.push('### Did the model read the total that is printed on the page?');
@@ -99,21 +99,22 @@ L.push('');
 L.push('This is the honest limit of the approach. Parallax fixes what a model **reads**; it cannot fix how a model **decides**. Some small models read the correct total through Parallax and still recommend paying an invoice whose destination account sits in a different country from the vendor — no amount of input sanitisation substitutes for judgement.');
 L.push('');
 
-L.push('## What the two guarded arms taught us');
+L.push('## What the guarded arms taught us');
 L.push('');
-L.push('They tie. Quoting the concealed text verbatim behind a clear untrusted marker performs exactly as well as withholding it. That is not what we expected, and it is not what an earlier run of this same benchmark showed.');
+L.push('The first attempt at a guard quoted the concealed text verbatim behind a clear untrusted marker. It failed badly: `gpt-4o-mini` returned `pay` with a total of `84200.00` on every trial, reading the figure straight back out of the block that was meant to contain it.');
 L.push('');
-L.push('In that earlier run the label-quarantine arm failed badly — `gpt-4o-mini` returned `pay` with a total of `84200.00` on every trial, reading the figure straight back out of the block that was meant to contain it. The difference between then and now is a single change, and it was in our code rather than theirs: the human-readable findings text said *"Monetary figure 84200.00 appears only in concealed text"*, so the decoy was also sitting in the prompt as **ordinary, unmarked prose**. Redacting that one sentence moved the same model, on the same file, from `pay:84200` on every trial to `hold:8420` on every trial.');
-L.push('');
-L.push('So the lesson is narrower and more useful than "labelling does not work":');
+L.push('The change that fixed it was in our code rather than theirs. The human-readable findings text said *"Monetary figure 84200.00 appears only in concealed text"*, so the decoy was **also** sitting in the prompt as ordinary, unmarked prose. Redacting that one sentence moved the same model, on the same file, from `pay:84200` on every trial to `hold:8420` on every trial.');
 L.push('');
 L.push('> **A quarantine only holds if it covers every path into the context — including your own explanation of it. One unmarked copy of the payload defeats a correctly marked one.**');
 L.push('');
-L.push('This is worth stating plainly because the failure was invisible from the outside. The quarantine block was well-formed, the marker was explicit, and the guard still leaked, because the same number was narrated two paragraphs later in a sentence nobody had thought of as untrusted content. `scripts/bench.mjs` now asserts the decoy is absent from the Parallax prompt and still present in the label-quarantine prompt, so the control keeps controlling and this regression cannot return silently.');
+L.push('The failure was invisible from the outside: the block was well-formed, the marker was explicit, and the number still arrived — narrated two paragraphs later in a sentence nobody had classified as untrusted content. `scripts/bench.mjs` now asserts the decoy is absent from the Parallax prompt and still present in the label-quarantine control, so the control keeps controlling and this cannot regress silently.');
 L.push('');
 
 L.push('## Caveats');
 L.push('');
+L.push('- **These percentages move between runs, and the ranking of the guarded designs is not stable at this sample size.** Repeated runs of this same script have put the two guarded arms anywhere from a tie to a 20-point gap. What has held in every single run is the direction: the unguarded arm is always worst, and the Parallax arm has read the total printed on the page correctly in 100% of answered trials every time. Treat the direction as the result and the exact figures as one sample.');
+L.push('- **A meaningful share of trials return nothing.** Small models drop out of JSON and shared upstreams rate-limit; both are retried and then recorded as missing rather than scored as unsafe decisions. Rates are over answered trials, and the denominators are printed beside every figure so the reader can see how much data each rests on.');
+L.push('- We also learned the hard way to check the account balance before trusting a run: one sweep silently lost every expensive model to HTTP 402 and reported a degraded panel as if it were the full one.');
 if (dead.length) {
   L.push(`- **${dead.length} model${dead.length === 1 ? '' : 's'} returned no usable data in any arm** (${dead.map((r) => `\`${r.model}\``).join(', ')}) — persistent rate-limiting or malformed output after retries. Shown as \`—\`, and excluded from every rate above rather than counted as failures.`);
 }

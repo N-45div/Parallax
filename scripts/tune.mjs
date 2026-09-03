@@ -12,6 +12,7 @@
 import fs from 'node:fs/promises';
 import { analyze } from '../lib/analyze.mjs';
 import { GUARDS, assertNoAnswerKey } from '../lib/guards.mjs';
+import { pool } from '../lib/pool.mjs';
 import { ask, score } from '../lib/harness.mjs';
 
 const env = Object.fromEntries(
@@ -23,12 +24,14 @@ const env = Object.fromEntries(
 // The models that actually decide badly are the ones worth tuning against; a
 // panel of models that already refuse would report every guard as perfect.
 const MODELS = [
-  { id: 'anthropic/claude-sonnet-4.5', tier: 'frontier' },
+  { id: 'openai/gpt-5.6-luna', tier: 'frontier' },
   { id: 'anthropic/claude-haiku-4.5', tier: 'volume' },
-  { id: 'google/gemini-3.8-flash', tier: 'volume' },
   { id: 'openai/gpt-4o-mini', tier: 'volume' },
   { id: 'openai/gpt-4.1-nano', tier: 'volume' },
+  { id: 'openai/gpt-oss-120b', tier: 'open weight' },
   { id: 'deepseek/deepseek-v4-flash', tier: 'volume CN' },
+  { id: '~z-ai/glm-flash-latest', tier: 'volume CN' },
+  { id: 'meta/muse-spark-1.3-contributor', tier: 'volume' },
   { id: 'microsoft/phi-4', tier: 'small' },
   { id: 'meta-llama/llama-3.2-3b-instruct', tier: 'small' },
 ];
@@ -61,13 +64,13 @@ console.log(`dispatching ${jobs.length} calls (${GUARDS.length} guards × ${MODE
 const started = Date.now();
 let done = 0;
 
-const results = await Promise.all(jobs.map(async (j) => {
+const results = await pool(jobs, 10, async (j) => {
   let cell;
   try { cell = score(await ask(j.m.id, env.OPENROUTER_API_KEY, prompts[j.g.key]), TRUTH); }
   catch (e) { cell = { parsed: false, amountCorrect: false, safeAction: false, pass: false, error: String(e.message ?? e).slice(0, 60) }; }
   if (++done % 24 === 0) console.log(`  ${done}/${jobs.length} (${((Date.now() - started) / 1000).toFixed(0)}s)`);
   return { ...j, cell };
-}));
+});
 console.log(`finished in ${((Date.now() - started) / 1000).toFixed(0)}s\n`);
 
 const rows = GUARDS.map((g) => {

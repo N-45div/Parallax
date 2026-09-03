@@ -9,7 +9,9 @@
  */
 import fs from 'node:fs/promises';
 import { analyze } from '../lib/analyze.mjs';
-import { unguardedPrompt, guardedPrompt, ask, score } from '../lib/harness.mjs';
+import { ask, score } from '../lib/harness.mjs';
+import { GUARDS, assertNoAnswerKey } from '../lib/guards.mjs';
+import { pool } from '../lib/pool.mjs';
 
 const env = Object.fromEntries(
   (await fs.readFile('.env.local', 'utf8')).split('\n')
@@ -18,18 +20,23 @@ const env = Object.fromEntries(
 );
 
 const MODELS = [
-  { id: 'anthropic/claude-opus-5',          tier: 'frontier' },
-  { id: 'anthropic/claude-sonnet-4.5',      tier: 'frontier' },
-  { id: 'moonshotai/kimi-k3',               tier: 'frontier CN' },
-  { id: 'anthropic/claude-haiku-4.5',       tier: 'volume' },
-  { id: 'google/gemini-3.8-flash',          tier: 'volume' },
-  { id: 'openai/gpt-4o-mini',               tier: 'volume' },
-  { id: 'openai/gpt-4.1-nano',              tier: 'volume' },
-  { id: 'qwen/qwen3.8-flash',               tier: 'volume CN' },
-  { id: 'z-ai/glm-5.3-flash',               tier: 'volume CN' },
-  { id: 'deepseek/deepseek-v4-flash',       tier: 'volume CN' },
-  { id: 'microsoft/phi-4',                  tier: 'small' },
-  { id: 'meta-llama/llama-3.2-3b-instruct', tier: 'small' },
+  // Deliberately the volume tier plus one frontier reference. Frontier models
+  // are not what runs high-volume accounts payable -- cost is precisely why
+  // cheap models are pointed at invoice traffic, so they are the population at
+  // risk. Every model here answered reliably in trial runs; the ones that
+  // 402'd or stalled were removed rather than reported as refusals.
+  { id: 'openai/gpt-5.6-luna',               tier: 'frontier' },
+  { id: 'anthropic/claude-haiku-4.5',        tier: 'volume' },
+  { id: 'google/gemini-3.8-flash',           tier: 'volume' },
+  { id: 'openai/gpt-4o-mini',                tier: 'volume' },
+  { id: 'openai/gpt-4.1-nano',               tier: 'volume' },
+  { id: 'openai/gpt-oss-120b',               tier: 'open weight' },
+  { id: 'deepseek/deepseek-v4-flash',        tier: 'volume CN' },
+  { id: '~z-ai/glm-flash-latest',            tier: 'volume CN' },
+  { id: 'meta/muse-spark-1.3-contributor',   tier: 'volume' },
+  { id: 'mistralai/mistral-nemo',            tier: 'small' },
+  { id: 'microsoft/phi-4',                   tier: 'small' },
+  { id: 'meta-llama/llama-3.2-3b-instruct',  tier: 'small' },
 ];
 
 const TRIALS = 3;
@@ -48,16 +55,45 @@ console.log(`\nParallax verdict: ${report.verdict.decision} — ${report.verdict
 // Both guarded arms get the redacted findings, so the ONLY difference between
 // them is how the concealed runs themselves are presented. If the findings text
 // leaked the decoy figure, the redacted arm would be measuring nothing.
-const prompts = {
-  unguarded: unguardedPrompt(report.nutrient.text.markdown || report.views.viewA),
-  labelled: guardedPrompt(report.views.viewB, report.views.concealed, report.findingsForModel, { verbatim: true }),
-  redacted: guardedPrompt(report.views.viewB, report.views.concealed, report.findingsForModel, { verbatim: false }),
+// The three arms are built from lib/guards.mjs so the column labelled "Parallax"
+// is the guard the product actually ships. It previously used the
+// payload-withheld design while the search had already selected evidence+policy,
+// which meant the headline table reported a design we do not run -- and made the
+// control look better than the product.
+const build = (key) => {
+  const g = GUARDS.find((x) => x.key === key);
+  if (!g) throw new Error(`no guard "${key}" in lib/guards.mjs`);
+  return g.build({
+    extractedText: report.nutrient.text.markdown || report.views.viewA,
+    visibleText: report.views.viewB,
+    concealed: report.views.concealed,
+    findings: report.findingsForModel,
+  });
 };
+
+// Read from the search rather than hardcoded. A hardcoded key drifted twice:
+// once when the search moved from payload-withheld to policy, and again when two
+// designs tied at 100% and the tie-break landed elsewhere. The benchmark's
+// "Parallax" column must be whatever the search actually selected, or the
+// headline table reports a design the product does not run.
+let SHIPPED = 'policy';
+try {
+  const picked = JSON.parse(await fs.readFile('public/fixtures/guard-search.json', 'utf8')).winner;
+  if (GUARDS.some((g) => g.key === picked)) SHIPPED = picked;
+} catch { /* no search yet; fall back */ }
+const prompts = {
+  unguarded: build('unguarded'),
+  labelled: build('labelled'),
+  redacted: build(SHIPPED),
+};
+console.log(`arms: unguarded · quarantine-by-label · ${GUARDS.find((g) => g.key === SHIPPED).label} (shipped)
+`);
 
 // The labelled arm is MEANT to contain the decoy — quoting the concealed text
 // verbatim is exactly what makes it the negative control. Only the redacted arm
 // must be clean, and it silently stopped being clean once before, so it is
 // asserted rather than assumed.
+assertNoAnswerKey(prompts.redacted, { key: SHIPPED, decoy: '84200.00' });
 if (/84[,.]?200/.test(prompts.redacted)) {
   throw new Error('the decoy figure leaked into the redacted prompt — the arm would measure nothing');
 }
@@ -72,7 +108,7 @@ console.log(`dispatching ${jobs.length} calls (${MODELS.length} models × ${ARMS
 const started = Date.now();
 let done = 0;
 
-const results = await Promise.all(jobs.map(async (j) => {
+const results = await pool(jobs, 10, async (j) => {
   let cell;
   try {
     cell = score(await ask(j.m.id, env.OPENROUTER_API_KEY, prompts[j.arm]), TRUTH);
@@ -81,7 +117,7 @@ const results = await Promise.all(jobs.map(async (j) => {
   }
   if (++done % 12 === 0) console.log(`  ${done}/${jobs.length} (${((Date.now() - started) / 1000).toFixed(0)}s)`);
   return { ...j, cell };
-}));
+});
 console.log(`all ${jobs.length} calls finished in ${((Date.now() - started) / 1000).toFixed(0)}s\n`);
 
 const rows = MODELS.map((m) => {
