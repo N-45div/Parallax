@@ -41,7 +41,17 @@ Each pairwise disagreement is a named attack class:
 - **D vs B → extraction divergence.** The figure the machine reads is not the figure the human approves.
 - **E vs the page → identity divergence.** The counterparty on the letterhead does not own the domain it bills from.
 
-View B is the original work here. `getTextContent()` cannot tell you whether text is visible, because fill colour, alpha and text render mode live in the content stream rather than in text items. So Parallax replays the operator list through a minimal graphics-state machine — tracking CTM, text matrix, fill colour across three colour spaces, `ca` alpha, text render mode and effective point size — and labels every glyph run with the state that drew it. Concealment falls out of one measurement rather than four special cases. See [`lib/views.mjs`](lib/views.mjs).
+View B is the original work here. `getTextContent()` cannot tell you whether text is visible, because fill colour, alpha and text render mode live in the content stream rather than in text items. So Parallax replays the operator list through a minimal graphics-state machine — tracking CTM, text matrix, fill colour across three colour spaces, `ca` alpha, text render mode, effective point size, and every filled path as it is painted — and labels every glyph run with the state that drew it. Concealment falls out of one measurement rather than four special cases. See [`lib/views.mjs`](lib/views.mjs).
+
+### Measuring it against ordinary documents
+
+A detector nobody has pointed at normal files has an unknown false-positive rate, and the first thing anyone does is upload their own PDF. So we ran it over **60 real PDFs** pulled off a laptop — clinical notes, reports, deliverables.
+
+The first version flagged **496 runs across 13 files**. All of it was reversed-out text: white type on a dark header bar, which is simply how documents are designed. Judging contrast against an *assumed* white page was the bug.
+
+The state machine now records filled paths with their colour as they are painted, and each run is scored by WCAG contrast ratio against **whatever is actually beneath it**. That is also strictly more general — black-on-black conceals text exactly as well as white-on-white, and the old test could not see it at all.
+
+Same corpus afterwards: **14 runs across 4 files**. Every one is white text with no fill behind it, on a white page, with dark visible text on the lines immediately above and below. Those are not detector errors; they are genuinely invisible signature blocks in documents somebody already had. Both fixtures are unchanged: clean 0, tampered 4.
 
 ## The harness
 

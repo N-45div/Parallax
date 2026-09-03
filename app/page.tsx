@@ -235,6 +235,21 @@ export default async function Page() {
             visibility from the graphics state itself, so all four fall out of the same measurement rather
             than four special cases.
           </p>
+          <p className="section-sub">
+            It also has to be quiet on ordinary documents, so we pointed it at <strong>60 real PDFs</strong>{' '}
+            pulled off a laptop — clinical notes, reports, deliverables. The first version flagged 496 runs
+            across 13 of them, all of it reversed-out text: white type on a dark header bar, which is simply
+            how documents are designed. Judging contrast against an assumed white page was the bug. The
+            detector now tracks every filled path as it is painted and measures each run against{' '}
+            <strong>what is actually behind it</strong>, which also catches black-on-black — invisible in
+            exactly the same way, and invisible to the old test too.
+          </p>
+          <p className="section-sub">
+            Same corpus afterwards: <strong>14 runs across 4 files</strong>. Every one is white text with
+            nothing painted behind it, on a white page, with dark visible text on the lines above and below.
+            Those are not detector errors — they are genuinely invisible signature blocks sitting in real
+            documents somebody already had.
+          </p>
         </div>
 
         <Analyzer />
