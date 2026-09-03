@@ -1,6 +1,6 @@
 # Parallax
 
-**A PDF says different things depending on who reads it. Parallax reads it four ways at once, and treats the disagreements as evidence.**
+**A PDF says different things depending on who reads it. Parallax reads it five ways at once, and treats the disagreements as evidence.**
 
 Built for the DevNetwork [API + Cloud + AI] Hackathon 2026.
 
@@ -132,10 +132,12 @@ A verdict that lives in a web page cannot be filed, attached to a payment run, o
 
 | Sponsor | Used for | Where |
 |---|---|---|
-| **Nutrient DWS** | View C (`structure` mode: reading order + semantic role) and View D (`text` mode), the independent readings the whole diff depends on | [`lib/nutrient.mjs`](lib/nutrient.mjs) |
+| **Nutrient DWS** | View C (`structure` mode: reading order + semantic role) and View D (`text` mode) — the independent readings the whole diff depends on, and the deterministic, replayable output the audit trail is built from | [`lib/nutrient.mjs`](lib/nutrient.mjs) |
 | **SerpApi** | Every entity the document asserts becomes a live-web query, so the report cites sources instead of emitting a score | [`lib/evidence.mjs`](lib/evidence.mjs) |
-| **Foxit** | PDF Services renders and issues the Refusal Certificate (upload → `pdf-from-html` → poll → download) | [`lib/foxit.mjs`](lib/foxit.mjs) |
-| **OpenRouter** | The model layer for the benchmark — 18 models across five countries and four price tiers | [`lib/harness.mjs`](lib/harness.mjs) |
+| **Foxit** | PDF Services renders and issues the Refusal Certificate (upload → `pdf-from-html` → poll → download); **eSign** receives the handoff, but only for a document that cleared the gate | [`lib/foxit.mjs`](lib/foxit.mjs), [`lib/esign.mjs`](lib/esign.mjs) |
+| **name.com** | View E — availability across the domain on the invoice and the near-neighbours a reader would not distinguish from it, so "does this supplier exist" is answered as a fact rather than a ranking | [`lib/domains.mjs`](lib/domains.mjs) |
+
+The model layer for the benchmark runs through [OpenRouter](https://openrouter.ai) — not a sponsor, just how 12 models from six labs are reached behind one interface. See [`lib/harness.mjs`](lib/harness.mjs).
 
 ## Run it
 

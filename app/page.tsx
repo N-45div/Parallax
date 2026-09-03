@@ -3,6 +3,8 @@ import path from 'node:path';
 import Analyzer from './Analyzer';
 import Benchmark from './Benchmark';
 import type { Arm, Row } from './Benchmark';
+import GuardSearch from './GuardSearch';
+import type { GuardSearch as GuardSearchData } from './GuardSearch';
 
 type Bench = {
   generated: string; trials: number; truthTotal: string; decoyTotal: string;
@@ -21,6 +23,16 @@ function answered(rows: Row[], arm: 'unguarded' | 'labelled' | 'redacted', metri
   let ok = 0, of = 0;
   for (const r of rows) { of += r.trials - r[arm].unparsed; ok += r[arm][metric]; }
   return { ok, of, pct: of ? Math.round((ok / of) * 100) : 0 };
+}
+
+async function loadGuardSearch(): Promise<GuardSearchData | null> {
+  try {
+    const p = path.join(process.cwd(), 'public', 'fixtures', 'guard-search.json');
+    const json = JSON.parse(await fs.readFile(p, 'utf8'));
+    return Array.isArray(json?.rows) && json.rows.length ? json : null;
+  } catch {
+    return null;
+  }
 }
 
 async function loadBench(): Promise<Bench | null> {
@@ -62,7 +74,7 @@ function armCell(arm: Arm, of: number, metric: 'amountCorrect' | 'safeAction' | 
 }
 
 export default async function Page() {
-  const bench = await loadBench();
+  const [bench, guardSearch] = await Promise.all([loadBench(), loadGuardSearch()]);
   const T = bench?.totals?.pass?.of ?? 0;
 
   return (
@@ -96,7 +108,8 @@ export default async function Page() {
               <p className="hero-lede">
                 Parallax reads the same file four ways at once — what the model swallows, what a human can
                 actually see, what an independent layout engine narrates, and what a commercial extraction
-                pipeline delivers. <strong>The disagreements between those readings are the attack.</strong>
+                pipeline delivers — then asks a registrar whether the supplier it names exists at all.{' '}
+                <strong>The disagreements between those readings are the attack.</strong>
               </p>
               <p className="hero-lede">
                 Everything below is measured from a real file against live APIs. Nothing here is illustrative.
@@ -366,13 +379,49 @@ export default async function Page() {
           )}
         </div>
 
+        {guardSearch && (
+          <div className="section" id="tuning">
+            <div className="section-head">
+              <span className="section-n">05</span>
+              <h2>The harness tunes the guard</h2>
+            </div>
+            <p className="section-sub">
+              Everything above measures one guard design. But the design is a choice, and choosing it by
+              taste is how you end up reporting the one that happened to work. So the harness searches the
+              candidates against the same metric and publishes the whole search — including the two that
+              lost, and the one that lost in an interesting direction.
+            </p>
+
+            <GuardSearch search={guardSearch} />
+
+            <p className="section-sub" style={{ marginTop: 24 }}>
+              <strong>Withholding the payload is not strictly better.</strong> It takes reading the correct
+              total to 100%, but it scores <em>lower</em> on the decision than quoting the concealed text
+              behind a marker does — hiding the payload also hides how bad it is, and a model that cannot see
+              the threat under-reacts to it. Stating the same evidence as settled machine-verified fact
+              recovers most of that, and adding the standing payment policy recovers the rest.
+            </p>
+            <p className="section-sub">
+              The winning design supplies <strong>conditions, never a verdict</strong>: do not pay on a
+              document carrying text no reviewer can see; do not release a payment whose destination is
+              domiciled elsewhere than the supplier without out-of-band confirmation. That is the rule a
+              finance function already operates under, not an answer key — and{' '}
+              <code>lib/guards.mjs</code> asserts mechanically that no candidate prompt ever contains the
+              concealed figure or names the decision it expects. A guard that tells the model what to output
+              would measure nothing.
+            </p>
+          </div>
+        )}
+
         <div className="foot">
           <strong>Parallax</strong> — built for the DevNetwork [API + Cloud + AI] Hackathon 2026.
           Visibility analysis runs on the PDF content stream directly; the structural and extraction views
           come from <a href="https://www.nutrient.io/api/" target="_blank" rel="noreferrer">Nutrient DWS</a>;
           entity evidence from <a href="https://serpapi.com" target="_blank" rel="noreferrer">SerpApi</a>;
-          document services from <a href="https://developer-api.foxit.com" target="_blank" rel="noreferrer">Foxit</a>;
-          the model layer through <a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a>.
+          the identity read from <a href="https://www.name.com" target="_blank" rel="noreferrer">name.com</a>;
+          document generation and the signature handoff from{' '}
+          <a href="https://developer-api.foxit.com" target="_blank" rel="noreferrer">Foxit</a> PDF Services and eSign.
+          The benchmark reaches its models through <a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a>.
           <br />
           Every number on this page was produced by <code>scripts/bench.mjs</code> against live APIs and can
           be regenerated from the repository.
