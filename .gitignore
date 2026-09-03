@@ -13,3 +13,4 @@ out
 bench-run.txt
 shot-*.png
 scripts/_*.mjs
+tune-run.txt
