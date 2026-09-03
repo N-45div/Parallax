@@ -10,8 +10,17 @@ type Claim = {
   id: string; label: string; value: string; kind: string; ok: boolean;
   results: { title: string; link: string; snippet: string }[];
 };
+type Domain = {
+  domain: string; registered?: boolean | null; verdict?: 'unregistered' | 'lookalike' | 'clear';
+  checked?: number; note?: string; skipped?: string; error?: string;
+  neighbours?: { domain: string; shorterCore?: boolean }[];
+};
+type Handoff = {
+  sent: boolean; explanation: string; folderId?: number | null;
+  status?: string | null; signingUrl?: string | null; error?: string;
+};
 type Report = {
-  filename: string; pages: number; runCount: number;
+  filename: string; pages: number; runCount: number; domain?: Domain | null; fixture?: string | null;
   viewA: string; viewB: string;
   concealed: Run[];
   structure: { role: string; text: string; readingOrder: number; confidence: number }[];
@@ -47,11 +56,13 @@ export default function Analyzer() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cert, setCert] = useState<{ url: string; ref: string } | null>(null);
+  const [handoff, setHandoff] = useState<Handoff | null>(null);
+  const [fixture, setFixture] = useState<'clean' | 'attack' | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const lastFile = useRef<{ blob: Blob; name: string } | null>(null);
 
   const send = useCallback(async (blob: Blob, name: string, label: string) => {
-    setBusy(label); setError(null); setReport(null); setCert(null);
+    setBusy(label); setError(null); setReport(null); setCert(null); setHandoff(null);
     lastFile.current = { blob, name };
     try {
       const fd = new FormData();
@@ -69,7 +80,7 @@ export default function Analyzer() {
 
   const runFixture = useCallback(async (which: 'attack' | 'clean') => {
     const label = which === 'attack' ? 'Reading the tampered invoice' : 'Reading the clean invoice';
-    setBusy(label);
+    setBusy(label); setFixture(which);
     try {
       const res = await fetch(`/fixtures/invoice-${which}.pdf`);
       await send(await res.blob(), `invoice-${which}.pdf`, label);
@@ -105,7 +116,7 @@ export default function Analyzer() {
             ref={fileRef} type="file" accept="application/pdf" hidden
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) send(f, f.name, `Reading ${f.name}`);
+              if (f) { setFixture(null); send(f, f.name, `Reading ${f.name}`); }
               e.target.value = '';
             }}
           />
@@ -162,8 +173,85 @@ export default function Analyzer() {
                   rendered and issued through Foxit PDF Services
                 </span>
               </div>
+
+              {/* The handoff Foxit's challenge is actually about. On REFUSE the
+                  eSign API is never called: the interesting half of a signature
+                  handoff is the half that does not happen. */}
+              {fixture && (
+                <div className="verdict-meta" style={{ alignItems: 'center' }}>
+                  <button
+                    className={report.verdict.decision === 'SIGN' ? 'primary' : ''}
+                    disabled={!!busy}
+                    onClick={async () => {
+                      setBusy('Handing off to eSign'); setError(null); setHandoff(null);
+                      try {
+                        const res = await fetch('/api/handoff', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ fixture }),
+                        });
+                        const json = await res.json();
+                        if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
+                        setHandoff(json);
+                      } catch (e: any) { setError(String(e?.message ?? e)); }
+                      finally { setBusy(null); }
+                    }}
+                  >
+                    {busy === 'Handing off to eSign' ? <span className="spin" /> : null}
+                    Send this document for human signature
+                  </button>
+                  {handoff && (
+                    <span className={handoff.sent ? 'good' : 'bad'} style={{ fontSize: 12.5 }}>
+                      {handoff.sent
+                        ? `envelope ${handoff.folderId} · ${handoff.status}`
+                        : 'eSign was never called'}
+                    </span>
+                  )}
+                  {handoff?.signingUrl && (
+                    <a href={handoff.signingUrl} target="_blank" rel="noreferrer">open the signing session ↗</a>
+                  )}
+                  <span className="hint">Foxit eSign API</span>
+                </div>
+              )}
+
+              {handoff && (
+                <div className={handoff.sent ? 'handoff sent' : 'handoff blocked'}>
+                  {handoff.explanation}
+                </div>
+              )}
             </div>
           </div>
+
+          {report.domain && (
+            <div className="section">
+              <div className="section-head">
+                <h2>The fifth reading: who owns the name on the invoice</h2>
+              </div>
+              <p className="section-sub">
+                A redirect has to touch the counterparty&apos;s identity somewhere, and the domain is the field
+                it cannot fake cheaply. Checked against a registrar, so the answer is a fact rather than a ranking.
+              </p>
+              <div className={`claim domain-${report.domain.verdict ?? 'unknown'}`}>
+                <div className="claim-h">
+                  <span className="claim-l">{report.domain.domain}</span>
+                  {report.domain.verdict && <span className="pill">{report.domain.verdict}</span>}
+                  {report.domain.checked && (
+                    <span className="claim-v">{report.domain.checked} domains checked</span>
+                  )}
+                </div>
+                <div className="res" style={{ marginTop: 6 }}>
+                  {report.domain.note ?? report.domain.skipped ?? report.domain.error}
+                </div>
+                {!!report.domain.neighbours?.length && (
+                  <div className="run-meta" style={{ marginTop: 10 }}>
+                    {report.domain.neighbours.slice(0, 8).map((n) => (
+                      <span key={n.domain} className={n.shorterCore ? 'bad' : ''}>{n.domain}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="section">
             <div className="section-head">
