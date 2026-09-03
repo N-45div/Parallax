@@ -12,3 +12,4 @@ out
 *.log
 bench-run.txt
 shot-*.png
+scripts/_*.mjs
