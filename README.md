@@ -162,6 +162,20 @@ This is not a defect in Nutrient — the model is confident because that run is 
 
 Which is the argument for reading a document more than one way, made by the document engine itself.
 
+## Evidence that can change the answer
+
+SerpApi was decoration until this point: claims were gathered, rendered, and never consulted by `verdict()`. A citation nobody acts on is a citation nobody needs.
+
+A company registration number is the one assertion on an invoice with exactly one correct answer — it identifies a single company — so a registry result naming a *different* company is a flat contradiction rather than a soft signal. That check now runs, and it now counts toward the verdict.
+
+On the tampered fixture: **company number 09482201 resolves to D. TOWLE CONSTRUCTION LTD**, not to the supplier on the letterhead.
+
+### What that check did to our own control
+
+It fired on the *clean* invoice too, and it was right to. We had given both fixtures the same invented number, and 09482201 belongs to a real company that is not Meridian Systems — so the clean control was quietly asserting something false, and every "clean → SIGN" claim in this repo depended on nobody checking.
+
+There is no honest way to invent a number that passes: every plausible UK registration belongs to somebody. The clean fixture now quotes one from an **unallocated range**, which the registry cannot corroborate either way — and absence of evidence correctly produces no finding at all. A control that trips a check is not a control, and the fix belonged in the fixture rather than in the check.
+
 ## The fifth reading: who owns the name on the invoice
 
 An invoice redirect has to touch the counterparty's identity somewhere, and the domain is the field it cannot fake cheaply. A registrar answers this better than a search engine can, because *"is this domain registered"* is a fact rather than a ranking.

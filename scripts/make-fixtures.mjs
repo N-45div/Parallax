@@ -17,7 +17,7 @@ const ITEMS = [
   ['Onboarding & migration', '1 lot', '780.00'],
 ];
 
-async function invoice({ bank, hidden, domain }) {
+async function invoice({ bank, hidden, domain, companyNo }) {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]); // A4
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
@@ -30,7 +30,12 @@ async function invoice({ bank, hidden, domain }) {
   // ---- letterhead ----
   text('MERIDIAN SYSTEMS LTD', 50, height - 70, { size: 17, font: bold, color: ACCENT });
   text('Unit 7, Kestrel House, 40 Bartholomew Close, London EC1A 7HR', 50, height - 88, { size: 8.5, color: MUTED });
-  text('Company No. 09482201  ·  VAT GB 214 8837 20', 50, height - 101, { size: 8.5, color: MUTED });
+  // The tampered invoice quotes a registration that belongs to a different real
+  // company, which the registry lookup catches. The clean one quotes a number in
+  // an unallocated range: an assertion the registry simply cannot corroborate,
+  // which must produce no finding at all. Absence of evidence is not a
+  // contradiction, and a control that trips a check is not a control.
+  text(`Company No. ${companyNo}  ·  VAT GB 214 8837 20`, 50, height - 101, { size: 8.5, color: MUTED });
   // The domain is the field a redirect attack has to touch and cannot fake: a
   // real vendor's domain has a history, a lookalike was registered last month.
   text(`${domain}  ·  accounts@${domain}`, 50, height - 114, { size: 8.5, color: MUTED });
@@ -139,6 +144,6 @@ const HIDDEN = {
 };
 
 await fs.mkdir('public/fixtures', { recursive: true });
-await fs.writeFile('public/fixtures/invoice-clean.pdf', await invoice({ bank: LEGIT_BANK, hidden: null, domain: 'meridiansystems.co.uk' }));
-await fs.writeFile('public/fixtures/invoice-attack.pdf', await invoice({ bank: FRAUD_BANK, hidden: HIDDEN, domain: 'meridian-systems-group.com' }));
+await fs.writeFile('public/fixtures/invoice-clean.pdf', await invoice({ bank: LEGIT_BANK, hidden: null, domain: 'meridiansystems.co.uk', companyNo: '99847213' }));
+await fs.writeFile('public/fixtures/invoice-attack.pdf', await invoice({ bank: FRAUD_BANK, hidden: HIDDEN, domain: 'meridian-systems-group.com', companyNo: '09482201' }));
 console.log('wrote public/fixtures/invoice-clean.pdf and invoice-attack.pdf');
