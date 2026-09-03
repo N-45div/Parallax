@@ -15,12 +15,18 @@ type Domain = {
   checked?: number; note?: string; skipped?: string; error?: string;
   neighbours?: { domain: string; shorterCore?: boolean }[];
 };
+type Confidence = {
+  top: { text: string; confidence: number; concealed: boolean };
+  bottom: { text: string; confidence: number; concealed: boolean };
+  range: [number, number]; elements: number;
+};
 type Handoff = {
   sent: boolean; explanation: string; folderId?: number | null;
   status?: string | null; signingUrl?: string | null; error?: string;
 };
 type Report = {
   filename: string; pages: number; runCount: number; domain?: Domain | null; fixture?: string | null;
+  confidence?: Confidence | null;
   viewA: string; viewB: string;
   concealed: Run[];
   structure: { role: string; text: string; readingOrder: number; confidence: number }[];
@@ -227,6 +233,46 @@ export default function Analyzer() {
               )}
             </div>
           </div>
+
+          {report.confidence && (
+            <div className="section">
+              <div className="section-head">
+                <h2>What the document engine was most sure about</h2>
+              </div>
+              <p className="section-sub">
+                Nutrient&apos;s understanding pass scores every element it recovers. On a tampered file the
+                ranking inverts the thing you would want: certainty about text and visibility of text turn
+                out to be unrelated properties.
+              </p>
+              <div className="conf">
+                <div className={`conf-row ${report.confidence.top.concealed ? 'bad' : ''}`}>
+                  <span className="conf-n">{report.confidence.top.confidence.toFixed(3)}</span>
+                  <span className="conf-t">
+                    <em>most confident</em>
+                    {report.confidence.top.text}
+                  </span>
+                  <span className="conf-tag">
+                    {report.confidence.top.concealed ? 'no human can see this' : 'on the visible page'}
+                  </span>
+                </div>
+                <div className={`conf-row ${report.confidence.bottom.concealed ? 'bad' : ''}`}>
+                  <span className="conf-n">{report.confidence.bottom.confidence.toFixed(3)}</span>
+                  <span className="conf-t">
+                    <em>least confident</em>
+                    {report.confidence.bottom.text}
+                  </span>
+                  <span className="conf-tag">
+                    {report.confidence.bottom.concealed ? 'no human can see this' : 'on the visible page'}
+                  </span>
+                </div>
+              </div>
+              <p className="hint" style={{ marginTop: 12 }}>
+                {report.confidence.elements} scored elements, confidence {report.confidence.range[0].toFixed(3)}–
+                {report.confidence.range[1].toFixed(3)} · a pipeline that routes on confidence alone routes most
+                confidently on the content it should not be reading
+              </p>
+            </div>
+          )}
 
           {report.domain && (
             <div className="section">

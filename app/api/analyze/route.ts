@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       extractedMarkdown: report.nutrient.text.markdown ?? '',
       leaked: report.leaked,
       domain: report.domain ?? null,
+      confidence: report.confidence ?? null,
       findings: report.findings,
       evidence: report.evidence,
       verdict: report.verdict,

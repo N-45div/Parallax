@@ -140,6 +140,28 @@ The winning design supplies **conditions, never a verdict**: do not pay on a doc
 
 `assertNoAnswerKey` in [`lib/guards.mjs`](lib/guards.mjs) enforces that mechanically: no candidate prompt may contain the concealed figure, and none may name the decision it expects. A guard that tells the model what to output would score 100% and measure nothing, and the difference between tuning and decoration is exactly that assertion. We enforce it in code rather than by good intentions, because the leak we already shipped once got in through a sentence nobody had classified as untrusted content.
 
+## What the document engine was most sure about
+
+Nutrient exposes two analysis modes, and the difference between them turned out to be a finding rather than a configuration detail.
+
+`structure` mode is deterministic layout analysis; on a born-digital PDF it reports confidence **1.000 for every element**, which is worth nothing as a signal. `understand` mode is the ML pass, and it spreads properly — 0.532 to 1.000 across 23 elements on the tampered fixture.
+
+Then look at the ranking:
+
+| Confidence | Element | Visible to a human? |
+|---|---|---|
+| **1.000** | `"Banking detail"` | **No** — a fragment of the white-on-white injection |
+| 0.827 | `MERIDIAN SYSTEMS LTD` | yes |
+| … | | |
+| 0.537 | `IBAN MT84 VALL 2201 3000 0000 0099 1247` | yes |
+| **0.532** | `VALLMTMT SWIFT / BIC` | yes |
+
+**The engine's single most confident element is text no human can see, and its least confident are the payment details that actually move the money.**
+
+This is not a defect in Nutrient — the model is confident because that run is clean, well-formed prose, and it is unsure about the IBAN because dense alphanumerics are genuinely hard. It is the point: **certainty about text and visibility of text are unrelated properties.** A pipeline that routes on confidence alone — send the low-confidence items to a human, auto-approve the rest — routes most confidently on exactly the content it should never have read, and sends a human to review the one part of the page that was never in question.
+
+Which is the argument for reading a document more than one way, made by the document engine itself.
+
 ## The fifth reading: who owns the name on the invoice
 
 An invoice redirect has to touch the counterparty's identity somewhere, and the domain is the field it cannot fake cheaply. A registrar answers this better than a search engine can, because *"is this domain registered"* is a fact rather than a ranking.
