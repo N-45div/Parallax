@@ -164,7 +164,8 @@ export default async function Page() {
                     extraction of this invoice the way a normal pipeline would.
                   </div>
                   <div className="stat-s">
-                    {u.ok}/{u.of} · {bench.rows.length} models × {bench.trials} trials
+                    {u.ok} of {u.of} answered · {bench.rows.length} models × {bench.trials} trials ={' '}
+                    {bench.rows.length * bench.trials} run
                   </div>
                 </div>
                 <div className="stat">
@@ -181,7 +182,7 @@ export default async function Page() {
                     of the same runs read the correct total once the file was read through Parallax,
                     with no model made worse.
                   </div>
-                  <div className="stat-s">{p.ok}/{p.of} · up from {u.pct}%</div>
+                  <div className="stat-s">{p.ok} of {p.of} answered · up from {u.pct}%</div>
                 </div>
               </div>
             );

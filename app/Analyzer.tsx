@@ -28,7 +28,7 @@ type Report = {
   leaked: Run[];
   findings: string[];
   evidence: Claim[];
-  verdict: { decision: 'REFUSE' | 'HOLD' | 'SIGN'; reason: string };
+  verdict: { decision: 'REFUSE' | 'HOLD' | 'SIGN' | 'INCONCLUSIVE'; reason: string };
   error?: string;
 };
 
@@ -162,7 +162,13 @@ export default function Analyzer() {
                   }}
                 >
                   {busy === 'Issuing certificate' ? <span className="spin" /> : null}
-                  Issue the {report.verdict.decision === 'SIGN' ? 'clearance' : 'refusal'} certificate
+                  Issue the{' '}
+                  {report.verdict.decision === 'SIGN'
+                    ? 'clearance'
+                    : report.verdict.decision === 'INCONCLUSIVE'
+                      ? 'inconclusive'
+                      : 'refusal'}{' '}
+                  certificate
                 </button>
                 {cert && (
                   <a href={cert.url} target="_blank" rel="noreferrer">

@@ -426,3 +426,10 @@ i.dot:focus-visible { outline: 2px solid var(--structural); outline-offset: 2px;
 .gs-num em { font-style: normal; font-size: 10.5px; color: var(--ink-4); }
 .gs-foot { padding: 12px 16px 14px; border-top: 1px solid var(--line); margin: 0; }
 @media (max-width: 760px) { .gs { overflow-x: auto; } }
+
+/* A verdict Parallax cannot reach is its own state. Rendering it as SIGN would
+   be a clean bill of health for a document that was never read. */
+.stamp.INCONCLUSIVE {
+  color: var(--ink-2); border-color: var(--line-bright);
+  background: rgba(164, 171, 183, 0.07);
+}
