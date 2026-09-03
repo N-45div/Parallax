@@ -250,18 +250,28 @@ export default async function Page() {
           </p>
           <p className="section-sub">
             It also has to be quiet on ordinary documents, so we pointed it at <strong>60 real PDFs</strong>{' '}
-            pulled off a laptop — clinical notes, reports, deliverables. The first version flagged 496 runs
-            across 13 of them, all of it reversed-out text: white type on a dark header bar, which is simply
-            how documents are designed. Judging contrast against an assumed white page was the bug. The
-            detector now tracks every filled path as it is painted and measures each run against{' '}
-            <strong>what is actually behind it</strong>, which also catches black-on-black — invisible in
-            exactly the same way, and invisible to the old test too.
+            pulled off a laptop — clinical notes, reports, deliverables. It took two rounds to get right, and
+            both bugs were ours.
           </p>
           <p className="section-sub">
-            Same corpus afterwards: <strong>14 runs across 4 files</strong>. Every one is white text with
-            nothing painted behind it, on a white page, with dark visible text on the lines above and below.
-            Those are not detector errors — they are genuinely invisible signature blocks sitting in real
-            documents somebody already had.
+            The first version flagged 496 runs across 13 files, all of it reversed-out text: white type on a
+            dark header bar, which is simply how documents are designed. Judging contrast against an{' '}
+            <em>assumed</em> white page was the bug. The detector now tracks every filled path as it is
+            painted and scores each run against <strong>what is actually behind it</strong> — which also
+            catches black-on-black, invisible in the same way and invisible to the old test too.
+          </p>
+          <p className="section-sub">
+            The second version still flagged 14 runs, and we briefly believed them — they looked like
+            genuinely invisible signature blocks. They were not. Our colour normaliser was dividing a
+            clamped byte array in place, so mid-grey text was re-quantised to pure white, and pure white is
+            what we call concealed. <strong>With that fixed: zero false positives across all 60 documents</strong>,
+            both fixtures unchanged.
+          </p>
+          <p className="section-sub">
+            The lesson we would rather have learned some other way: a detector that reports invisible text is
+            extremely good at producing evidence for its own correctness. We nearly published{' '}
+            <em>&ldquo;we found real invisible text in the wild&rdquo;</em> when what we had found was our own
+            rounding error.
           </p>
         </div>
 

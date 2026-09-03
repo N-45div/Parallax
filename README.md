@@ -45,13 +45,17 @@ View B is the original work here. `getTextContent()` cannot tell you whether tex
 
 ### Measuring it against ordinary documents
 
-A detector nobody has pointed at normal files has an unknown false-positive rate, and the first thing anyone does is upload their own PDF. So we ran it over **60 real PDFs** pulled off a laptop — clinical notes, reports, deliverables.
+A detector nobody has pointed at normal files has an unknown false-positive rate, and the first thing anyone does is upload their own PDF. So we ran it over **60 real PDFs** pulled off a laptop — clinical notes, reports, deliverables, technical references.
 
-The first version flagged **496 runs across 13 files**. All of it was reversed-out text: white type on a dark header bar, which is simply how documents are designed. Judging contrast against an *assumed* white page was the bug.
+It took two rounds to get right, and both bugs were ours.
 
-The state machine now records filled paths with their colour as they are painted, and each run is scored by WCAG contrast ratio against **whatever is actually beneath it**. That is also strictly more general — black-on-black conceals text exactly as well as white-on-white, and the old test could not see it at all.
+**Round one flagged 496 runs across 13 files.** All of it was reversed-out text: white type on a dark header bar, which is simply how documents are designed. Judging contrast against an *assumed* white page was the bug. The state machine now records filled paths with their colour as they are painted, and each run is scored by WCAG contrast ratio against **whatever is actually beneath it** — which also catches black-on-black, invisible in exactly the same way and invisible to the old test too.
 
-Same corpus afterwards: **14 runs across 4 files**. Every one is white text with no fill behind it, on a white page, with dark visible text on the lines immediately above and below. Those are not detector errors; they are genuinely invisible signature blocks in documents somebody already had. Both fixtures are unchanged: clean 0, tampered 4.
+**Round two still flagged 14 runs across 4 files, and we briefly believed them.** They looked like genuinely invisible signature blocks: white text, nothing painted behind, dark visible text on the lines above and below. They were not. `norm()` was dividing a pdf.js `Uint8ClampedArray` by 255 *in place*, and mapping over a clamped array re-quantises every channel — so mid-grey text came back as pure white, and pure white is what we call concealed. The same bug served `fill` to the browser as `{"0":1,"1":1,"2":1}` instead of an array, which crashed the results view on every analysis that found anything.
+
+**With that fixed: 0 false positives across all 60 documents**, and both fixtures unchanged — clean 0, tampered 4.
+
+The lesson we would rather have learned some other way: a detector that reports invisible text is extremely good at producing evidence for its own correctness. We nearly published "we found real invisible text in the wild" when what we had found was our own rounding error.
 
 ## The harness
 
