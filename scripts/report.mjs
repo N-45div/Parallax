@@ -99,13 +99,17 @@ L.push('');
 L.push('This is the honest limit of the approach. Parallax fixes what a model **reads**; it cannot fix how a model **decides**. Some small models read the correct total through Parallax and still recommend paying an invoice whose destination account sits in a different country from the vendor — no amount of input sanitisation substitutes for judgement.');
 L.push('');
 
-L.push('## The negative result we kept');
+L.push('## What the two guarded arms taught us');
 L.push('');
-L.push('The middle arm is the obvious design, and it does not work. Showing a model the concealed text while clearly marking it untrusted still leaves the payload in context, and weaker models lift the hidden figure straight back out of the quarantine block.');
+L.push('They tie. Quoting the concealed text verbatim behind a clear untrusted marker performs exactly as well as withholding it. That is not what we expected, and it is not what an earlier run of this same benchmark showed.');
 L.push('');
-L.push('We found it by reading our own failing rows. Then, having fixed it, we found *the same leak through a second door*: the human-readable findings text said "Monetary figure 84200.00 appears only in concealed text", so the decoy was still reaching the model through prose. Both paths now redact, and `scripts/bench.mjs` asserts that the decoy never appears in the Parallax prompt — and that it *does* still appear in the label-quarantine prompt, so the negative control keeps controlling.');
+L.push('In that earlier run the label-quarantine arm failed badly — `gpt-4o-mini` returned `pay` with a total of `84200.00` on every trial, reading the figure straight back out of the block that was meant to contain it. The difference between then and now is a single change, and it was in our code rather than theirs: the human-readable findings text said *"Monetary figure 84200.00 appears only in concealed text"*, so the decoy was also sitting in the prompt as **ordinary, unmarked prose**. Redacting that one sentence moved the same model, on the same file, from `pay:84200` on every trial to `hold:8420` on every trial.');
 L.push('');
-L.push('> **Telling a weak model that content is untrusted does not stop it being used. Not showing it does.**');
+L.push('So the lesson is narrower and more useful than "labelling does not work":');
+L.push('');
+L.push('> **A quarantine only holds if it covers every path into the context — including your own explanation of it. One unmarked copy of the payload defeats a correctly marked one.**');
+L.push('');
+L.push('This is worth stating plainly because the failure was invisible from the outside. The quarantine block was well-formed, the marker was explicit, and the guard still leaked, because the same number was narrated two paragraphs later in a sentence nobody had thought of as untrusted content. `scripts/bench.mjs` now asserts the decoy is absent from the Parallax prompt and still present in the label-quarantine prompt, so the control keeps controlling and this regression cannot return silently.');
 L.push('');
 
 L.push('## Caveats');

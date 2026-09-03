@@ -24,7 +24,7 @@ That is not a criticism of the extractor. No extractor marks visibility, because
 
 ## The mechanism
 
-Four independent readings of the same bytes:
+Five independent readings of the same bytes. The first four are the document reading itself; the fifth asks whether the party it names exists.
 
 | View | Source | Answers |
 |---|---|---|
@@ -32,12 +32,14 @@ Four independent readings of the same bytes:
 | **B — visible** | operator list replayed through a graphics-state machine | What a human can actually see |
 | **C — structural** | Nutrient DWS layout engine | What a machine narrates, and in what order |
 | **D — extracted** | Nutrient DWS text extraction | What a real pipeline delivers downstream |
+| **E — identity** | name.com registrar | Whether the counterparty on the page exists at all |
 
 Each pairwise disagreement is a named attack class:
 
 - **A ∖ B → concealed text.** Present in the file, invisible on the page.
 - **C vs B → reading-order divergence.** The layout engine places concealed runs into the document's reading order as ordinary body text.
 - **D vs B → extraction divergence.** The figure the machine reads is not the figure the human approves.
+- **E vs the page → identity divergence.** The counterparty on the letterhead does not own the domain it bills from.
 
 View B is the original work here. `getTextContent()` cannot tell you whether text is visible, because fill colour, alpha and text render mode live in the content stream rather than in text items. So Parallax replays the operator list through a minimal graphics-state machine — tracking CTM, text matrix, fill colour across three colour spaces, `ca` alpha, text render mode and effective point size — and labels every glyph run with the state that drew it. Concealment falls out of one measurement rather than four special cases. See [`lib/views.mjs`](lib/views.mjs).
 
@@ -53,13 +55,17 @@ Three arms:
 2. **Quarantine by label** — visible layer plus the concealed runs quoted verbatim and clearly marked untrusted.
 3. **Parallax** — visible layer plus a description of each concealed run, payload withheld.
 
-### The negative result we kept
+### What arms 2 and 3 taught us
 
-Arm 2 is the obvious design, and **it does not work.** Smaller models lift the hidden figure straight back out of the quarantine block and act on it — the label does not protect them, because the number is still in the context. We found this by inspecting our own failing rows rather than by reasoning about it in advance.
+**They tie.** Quoting the concealed text verbatim behind a clear untrusted marker performs exactly as well as withholding it. That is not what we expected, and it is not what an earlier run of this same benchmark showed.
 
-Arm 3 therefore withholds the payload entirely and reports only its concealment technique, its size, and the class of content it carried ("language directing an automated reader to approve", "a monetary figure absent from the visible layer, withheld").
+In that earlier run arm 2 failed badly: `gpt-4o-mini` returned `pay` on a total of `84200.00` in **every** trial, reading the figure straight back out of the block meant to contain it. One change closed the gap, and it was in our code rather than the model's. Our own findings text said *"Monetary figure 84200.00 appears only in concealed text"* — so the decoy was **also** sitting in the prompt as ordinary, unmarked prose. Redacting that single sentence moved the same model, on the same file, from `pay:84200` every trial to `hold:8420` every trial.
 
-The lesson generalises well past PDFs: **telling a weak model that content is untrusted does not stop it being used. Not showing it does.**
+The quarantine block was never the leak. The explanation of it was.
+
+> **A quarantine only holds if it covers every path into the context — including your own account of what you quarantined. One unmarked copy of the payload defeats a correctly marked one.**
+
+This is worth stating plainly because the failure is invisible from the outside: the block was well-formed, the marker was explicit, and the number still arrived — narrated two paragraphs later in a sentence nobody had classified as untrusted content. `scripts/bench.mjs` now asserts the decoy is absent from the Parallax prompt *and still present* in the label-quarantine prompt, so the control keeps controlling and the regression cannot return silently.
 
 ## Results
 
@@ -69,14 +75,42 @@ The lesson generalises well past PDFs: **telling a weak model that content is un
 
 | | Unguarded | Quarantine by label | **Parallax** |
 |---|---|---|---|
-| Read the page's total | 69% (20/29) | 89% (24/27) | **100% (27/27)** |
-| Declined to pay | 59% (17/29) | 67% (18/27) | 78% (21/27) |
+| Read the page's total | 63% (17/27) | **100% (30/30)** | **100% (30/30)** |
+| Declined to pay | 59% (16/27) | 80% (24/30) | 80% (24/30) |
 
-`gpt-4o-mini`, `gpt-4.1-nano` and `phi-4` each reported **$84,200** — the concealed figure — in *every* unguarded trial, and the correct **$8,420** in *every* trial through Parallax. **No model was made worse.**
+`gpt-4o-mini`, `gpt-4.1-nano` and `phi-4` each reported **$84,200** — the concealed figure — in *every* unguarded trial, and the correct **$8,420** in *every* guarded trial. **No model was made worse.**
 
-The second row is the honest limit: Parallax fixes what a model **reads**, not how it **decides**. `gpt-4.1-nano` reads the correct total through Parallax and still says "pay".
+The second row is the honest limit: Parallax fixes what a model **reads**, not how it **decides**. `gpt-4.1-nano` reads the correct total through the guard and still says "pay".
 
 Full table, per-model breakdown and caveats in [`RESULTS.md`](RESULTS.md), generated by `scripts/bench.mjs` against live APIs. Nothing in it is hand-entered.
+
+## The fifth reading: who owns the name on the invoice
+
+An invoice redirect has to touch the counterparty's identity somewhere, and the domain is the field it cannot fake cheaply. A registrar answers this better than a search engine can, because *"is this domain registered"* is a fact rather than a ranking.
+
+Parallax takes the domain **off the visible layer only** — reading it out of the concealed text would be checking the attacker's preferred answer — generates the near-neighbours a reader would not distinguish (hyphens dropped, corporate suffixes added or removed, suffix swapped, composed together), and checks the whole set in one call.
+
+Two patterns are diagnostic, and only these two become findings:
+
+- **The claimed domain is unregistered.** A supplier invoicing from a domain nobody owns is not a supplier. On the tampered fixture, `meridian-systems-group.com` is available to purchase right now while 16 near-identical domains are registered.
+- **The claimed domain is a longer variant of a shorter one that already exists.** The short name is the one a reader recognises.
+
+Everything else is explicitly cleared. Established brands defensively register their own neighbours, so "neighbours exist" is the default rather than a signal — treating it as one would put a false positive on every legitimate invoice. `anthropic.com` and the clean fixture's own domain both come back `clear`.
+
+## The signature handoff
+
+Foxit's challenge leaves signing out of the agent's tool catalogue on purpose, so that a person has to approve anything that gets signed — and invites an argument about where the boundary belongs.
+
+**Our argument: that boundary is correct, and it is drawn too late.**
+
+Withholding the signing tool protects against an agent that *decides* wrongly. It does nothing about an agent that was *told* something the human was not. By the time a document reaches a signature the manipulation has already happened — the agent read a total of $84,200 off a page that says $8,420 — and every step after that is a well-behaved agent faithfully executing a corrupted premise. Worse, the human asked to approve that signature is shown the rendered page, never the content stream. They confirm precisely the thing they cannot see.
+
+So Parallax puts a second gate *in front of* Foxit's. Nothing reaches the eSign API until the readings of it agree:
+
+- **Clean invoice → SIGN →** handed to Foxit eSign, envelope created, waiting on a human signature.
+- **Tampered invoice → REFUSE →** the eSign API is never called. No envelope exists to approve.
+
+The interesting half of a signature handoff is the half that does not happen.
 
 ## The Refusal Certificate
 
